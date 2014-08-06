@@ -1,0 +1,17 @@
+#!/bin/bash
+
+#hipchat setting
+export HUBOT_HIPCHAT_TOKEN=""
+export HUBOT_HIPCHAT_JID=""
+export HUBOT_HIPCHAT_PASSWORD=""
+#export HUBOT_LOG_LEVEL="debug"
+
+#github setting
+export HUBOT_GITHUB_TOKEN=""
+export HUBOT_GITHUB_USER=""
+#export HUBOT_GITHUB_API=""
+export HUBOT_GITHUB_ORG=""
+
+#hubot start
+forever start -c coffee node_modules/.bin/hubot -a hipchat
+
