@@ -29,8 +29,10 @@ module.exports = (robot) ->
       url_api_base = "https://api.github.com"
 
     requestSend = (msg, repo, data) ->
+        github.handleErrors (response) ->
+            msg.send "Failed... #{response.error}"
         github.post "#{url_api_base}/repos/#{repo}/pulls", data, (pulls) ->
-            msg.send "Created pull request No.#{pulls['number']}. \nlink: #{pulls['html_url']}"
+            msg.send "Created pull request ##{pulls['number']}. \nlink: #{pulls['html_url']}"
             return
         return
 
@@ -49,6 +51,14 @@ module.exports = (robot) ->
             "base": bt
         }
 
+    getGithubRepo = (msg) =>
+        user_id = msg.message.user.id
+        key = "repo"
+        g = robot.brain.data.github or {}
+        if g[user_id]?[key]?
+            return g[user_id][key]
+        return
+
     robot.respond /create\s+pr\s+(.+)\s+(.+)\s+(.+)/i, (msg)->
         repo = github.qualified_repo msg.match[1]
         branch_to = msg.match[2]
@@ -62,6 +72,17 @@ module.exports = (robot) ->
         branch_from = "feature/##{msg.match[2]}"
         issue = msg.match[2]
         requestSend(msg, repo, makeDataByIssue(branch_to, branch_from, issue))
+        return
+
+    robot.respond /create\s+pr\s+#([0-9]+)/i, (msg)->
+        repo = getGithubRepo msg
+        if repo
+            branch_to = "develop"
+            branch_from = "feature/##{msg.match[1]}"
+            issue = msg.match[1]
+            requestSend(msg, repo, makeDataByIssue(branch_to, branch_from, issue))
+        else
+            msg.send "Github repo not set."
         return
 
     robot.respond /deploy\s+pr\s+(.+)/i, (msg)->
