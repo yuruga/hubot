@@ -1,99 +1,173 @@
 # Description:
-#   Show open issues from a Github repository
+#   create pull requests from a Github repository
 #
 # Dependencies:
-#   "underscore": "1.3.3"
-#   "underscore.string": "2.1.1"
 #   "githubot": "0.4.x"
 #
 # Configuration:
 #   HUBOT_GITHUB_TOKEN
 #   HUBOT_GITHUB_USER
-#   HUBOT_GITHUB_REPO
-#   HUBOT_GITHUB_USER_(.*)
 #   HUBOT_GITHUB_API
+#   HUBOT_GITHUB_ORG
 #
 # Commands:
-#   hubot show [me] [<limit> [of]] [<assignee>'s|my] [<label>] issues [for <user/repo>] [about <query>] -- Shows open GitHub issues for repo.
-#   hubot show [me] issues for <repo> -- List all issues for given repo IFF HUBOT_GITHUB_USER configured
-#   hubot show [me] issues for <user/repo> -- List all issues for given repo
-#   hubot show [me] issues -- Lists all issues IFF HUBOT_GITHUB_REPO configured
-#   hubot show <chat user's> issues -- Lists all issues for chat user IFF HUBOT_GITHUB_USER_(.*) configured
+#   hubot create issue <title> <user/repo>? <github_user>? <milestone_num>? --
+#   hubot set github user <user> -- デフォルトで利用するGithubのユーザ名をセット
+#   hubot set github repo <repo> -- デフォルトで利用するGithubのリポジトリをセット
+#   hubot set github milestone <milestone_num> -- デフォルトで利用するGithubのマイルストーンをセット
+#   hubot show github user -- デフォルトで利用するGithubのユーザ名を表示
+#   hubot show github repo -- デフォルトで利用するGithubのリポジトリを表示
+#   hubot show github milestone --　デフォルトで利用するGithubのマイルストーンを表示
 #
 # Notes:
-#   If, for example, HUBOT_GITHUB_USER_JOHN is set to GitHub user login
-#   'johndoe1', you can ask `show john's issues` instead of `show johndoe1's
-#   issues`. This is useful for mapping chat handles to GitHub logins.
-#
-#   HUBOT_GITHUB_API allows you to set a custom URL path (for Github enterprise users)
 #
 # Author:
-#   davidsiegel
+#   xlune
 
-_  = require("underscore")
-_s = require("underscore.string")
-
-ASK_REGEX = ///
-  show\s            # Start's with 'show'
-  (me)?\s*          # Optional 'me'
-  (\d+|\d+\sof)?\s* # 'N of' -- 'of' is optional but ambiguous unless assignee is named
-  (\S+'s|my)?\s*    # Assignee's name or 'my'
-  (\S+)?\s*         # Optional label name
-  issues\s*         # 'issues'
-  (for\s\S+)?\s*    # Optional 'for <repo>'
-  (about\s.+)?      # Optional 'about <query>'
-///i
-
-# Given the text sent to robot.respond (e.g. 'hubot show me...'), parse the
-# criteria used for filtering issues.
-parse_criteria = (message) ->
-  [me, limit, assignee, label, repo, query] = message.match(ASK_REGEX)[1..]
-  me: me,
-  limit: parseInt limit.replace(" of", "") if limit?,
-  assignee: assignee.replace("'s", "") if assignee?,
-  label: label,
-  repo: repo.replace("for ", "") if repo?,
-  query: query.replace("about ", "") if query?
-
-# Filter the issue list by criteria; most of the filtering is handled as part
-# of the Issues API, but limit and query paramaters are not part of the API.
-filter_issues = (issues, {limit, query}) ->
-  if query?
-    issues = _.filter issues, (i) -> _.any [i.body, i.title], (s) -> _s.include s.toLowerCase(), query.toLowerCase()
-  if limit?
-    issues = _.first issues, limit
-  issues
-
-# Resolve assignee name to a potential GitHub username using sender
-# information and/or environment variables.
-complete_assignee = (msg, name) ->
-  name = msg.message.user.name if name is "my"
-  name = name.replace("@", "")
-  # Try resolving the name to a GitHub username using full, then first name:
-  resolve = (n) -> process.env["HUBOT_GITHUB_USER_#{n.replace(/\s/g, '_').toUpperCase()}"]
-  resolve(name) or resolve(name.split(' ')[0]) or name
+GITHUB_VAR_KEYS = [
+    "user"
+    "repo"
+    "milestone"
+]
 
 module.exports = (robot) ->
-  github = require("githubot")(robot)
-  robot.respond ASK_REGEX, (msg) ->
-    criteria = parse_criteria msg.message.text
-    criteria.repo = github.qualified_repo criteria.repo
-    criteria.assignee = complete_assignee msg, criteria.assignee if criteria.assignee?
 
-    query_params = state: "open", sort: "created"
-    query_params.labels = criteria.label if criteria.label?
-    query_params.assignee = criteria.assignee if criteria.assignee?
+    github = require("githubot")(robot)
 
-    base_url = process.env.HUBOT_GITHUB_API || 'https://api.github.com'
-    github.get "#{base_url}/repos/#{criteria.repo}/issues", query_params, (issues) ->
-      issues = filter_issues issues, criteria
+    unless (url_api_base = process.env.HUBOT_GITHUB_API)?
+      url_api_base = "https://api.github.com"
 
-      if _.isEmpty issues
-          msg.send "No issues found."
-      else
-        for issue in issues
-          labels = ("##{label.name}" for label in issue.labels).join(" ")
-          assignee = if issue.assignee then " (#{issue.assignee.login})" else ""
-          msg.send "[#{issue.number}] #{issue.title} #{labels}#{assignee} = #{issue.html_url}"
+    requestSend = (msg, repo, data) ->
+        github.handleErrors (response) ->
+            msg.send "Failed... #{response.error}"
+        github.post "#{url_api_base}/repos/#{repo}/issues", data, (issues) ->
+            msg.send "Created issue No.#{issues['number']}. \nlink: #{issues['html_url']}"
+            return
+        return
 
-# require('../../test/scripts/github-issues_test').test parse_criteria
+    requestShow = (msg, repo, param) ->
+        github.handleErrors (response) ->
+            msg.send "Failed... #{response.error}"
+        github.get "#{url_api_base}/repos/#{repo}/issues", param, (issues) ->
+            message = []
+            for issue in issues
+                message.push "##{issue.number} #{issue.title}"
+
+            if message.length
+                msg.send message.join("\n")
+            else
+                msg.send "Not have issues."
+            return
+        return
+
+    #
+    # makeData = (bt, bf) ->
+    #     return {
+    #         "title": "#{bf} to #{bt}",
+    #         "body": "Please pull this in!",
+    #         "head": bf,
+    #         "base": bt
+    #     }
+    #
+    # makeDataByIssue = (bt, bf, issue) ->
+    #     return {
+    #         "issue": issue,
+    #         "head": bf,
+    #         "base": bt
+    #     }
+
+    getGithubVer = (key, user_id) =>
+        g = robot.brain.data.github or {}
+        if g[user_id]?[key]?
+            return g[user_id][key]
+        return
+
+    robot.respond /set\s+github\s+(.+)\s+(.+)/i, (msg)->
+        key = msg.match[1]
+        val = msg.match[2]
+        if key in GITHUB_VAR_KEYS
+            val = github.qualified_repo val if key is "repo"
+            if key is "milestone" and not val.match /^[0-9]+$/
+                msg.send "Failed. Bad value."
+                return
+            user_id = msg.message.user.id
+            if user_id of robot.brain.data.users
+                robot.brain.data.github = {} unless robot.brain.data.github?
+                vars = robot.brain.data.github[user_id] or {}
+                vars[key] = val
+                robot.brain.data.github[user_id] = vars
+                robot.brain.save()
+                msg.send "Set github value. #{key} is #{val}"
+            else
+                msg.send "Failed. User Undefined."
+        else
+            msg.send "Failed. Bad key name."
+        return
+
+    robot.respond /show\s+github\s+(.+)/i, (msg)->
+        key = msg.match[1]
+        if key in GITHUB_VAR_KEYS
+            user_id = msg.message.user.id
+            if user_id of robot.brain.data.users
+                val = getGithubVer(key, user_id)
+                if val
+                    msg.send "github value. #{key} is #{val}"
+                else
+                    msg.send "github value. #{key} is Unset..."
+            else
+                msg.send "Failed. User Undefined."
+        else
+            msg.send "Failed. Bad key name."
+        return
+
+    robot.respond /create\s+issue\s+([^\s]+)(?:\s+([^\s]+))?(?:\s+([^\s]+))?(?:\s+([0-9]+))?/i, (msg)->
+        user_id = msg.message.user.id
+        title = msg.match[1]
+        repo = msg.match[2] or getGithubVer("repo", user_id)
+        repo = github.qualified_repo repo if repo
+        username = msg.match[3] or getGithubVer("user", user_id)
+        milestone = msg.match[4] or getGithubVer("milestone", user_id)
+        if title and repo
+            data = {}
+            data.title = title
+            data.assignee = username if username
+            data.milestone = milestone if milestone
+            requestSend msg, repo, data
+        else
+            msg.send "create issue failed. "
+        return
+
+    robot.respond /show\s+issues(?:\s+([^\s]+))?/i, (msg) ->
+        user_id = msg.message.user.id
+        repo = msg.match[1] or getGithubVer("repo", user_id)
+        if repo
+            param = { state: "open", sort: "created" }
+            user_name = getGithubVer("user", user_id)
+            param.assignee = user_name if user_name?
+
+            requestShow(msg, repo, param)
+        else
+            msg.send "require repository target."
+        return
+
+    # robot.respond /create\s+pr\s+(.+)\s+(.+)\s+(.+)/i, (msg)->
+    #     repo = github.qualified_repo msg.match[1]
+    #     branch_to = msg.match[2]
+    #     branch_from = msg.match[3]
+    #     requestSend(msg, repo, makeData(branch_to, branch_from))
+    #     return
+    #
+    # robot.respond /create\s+pr\s+(.+)\s+#([0-9]+)/i, (msg)->
+    #     repo = github.qualified_repo msg.match[1]
+    #     branch_to = "develop"
+    #     branch_from = "feature/##{msg.match[2]}"
+    #     issue = msg.match[2]
+    #     requestSend(msg, repo, makeDataByIssue(branch_to, branch_from, issue))
+    #     return
+    #
+    # robot.respond /deploy\s+pr\s+(.+)/i, (msg)->
+    #     repo = github.qualified_repo msg.match[1]
+    #     branch_to = "master"
+    #     branch_from = "develop"
+    #     requestSend(msg, repo, makeData(branch_to, branch_from))
+    #     return
