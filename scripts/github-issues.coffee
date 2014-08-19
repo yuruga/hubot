@@ -74,7 +74,22 @@ module.exports = (robot) ->
             return robot.brain.data.github[user_id][room][key]
         return
 
-    robot.respond /set\s+github\s+(.+)\s+(.+)/i, (msg)->
+    robot.respond /set\s+github\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)$/i, (msg)->
+        data = {}
+        param = {
+            user: msg.match[1]
+            repo: msg.match[2]
+            milestone: msg.match[3]
+        }
+        user_id = msg.message.user.id
+        room = msg.message.room
+        for key,val of param
+            setGithubVar(key, val, user_id, room)
+            data[key] = val
+        msg.send "github values.\n#{Util.inspect(data, false, 4)}\nby #{room}"
+        return
+
+    robot.respond /set\s+github\s+([^\s]+)\s+([^\s]+)$/i, (msg)->
         key = msg.match[1]
         val = msg.match[2]
         if key in GITHUB_VAR_KEYS
@@ -91,21 +106,6 @@ module.exports = (robot) ->
                 msg.send "Failed. User Undefined."
         else
             msg.send "Failed. Bad key name."
-        return
-
-    robot.respond /set\s+github\s+(.+)\s+(.+)\s+(.+)/i, (msg)->
-        data = {
-            user: msg.match[1]
-            repo: msg.match[2]
-            milestone: msg.match[3]
-        }
-        user_id = msg.message.user.id
-        room = msg.message.room
-        data = {}
-        for val,key in data
-            setGithubVar(key, val, user_id, room)
-            data[key] = val
-        msg.send "github values.\n#{Util.inspect(data, false, 4)}\nby #{room}"
         return
 
     robot.respond /show\s+github(?:\s+([^\s]+))?/i, (msg)->
