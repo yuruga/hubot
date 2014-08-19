@@ -1,0 +1,19 @@
+language: node_js
+node_js:
+- tip
+branches:
+  only:
+  - master
+notifications:
+  slack:
+    secure: bvnjVwfzROgIswpvM3mzPfTnBj4ey/Bw/jVcYuJvuCIzqfl0dHnqrtsYgZSa2rxT8kudwXdrSMDA1S8NeDP1gDbfOMQObWpoo7lF2KGj5cINGCN72hEeHkjz3P+dRDa0UsAsAr23q+CD1c2LdS4XjYuJPFvol2wzLG6SCWX6Q4U=
+deploy:
+  provider: heroku
+  strategy: git
+  api_key:
+    secure: rnXTlR+OWw5ytwBpsZ5+gCZfw8kPSD4hGJVA2aqv/tRRVZ3h8BJmUg70kfmUFs7HalxliBGiTWxxIgfIu5kfs0/BcP9rx8dEItolwuLhYPiPS0YfwrCmA1txTDpRl8CgTx36vlaI8kuWi2JicrZkeO8tle0kNuBDOxFnoDZ4ZqY=
+  app:
+    secure: piQBrDA6hdjdpK27NzWiKWvmlFC8zzeec0fGJwvvre3m8pyc/zSXEMIWwQr35LW2znVVO2InlfbbHCJ3B1ld19RnkRAqZzIaRCiqVg834zD3GYY5YdlXImd8SoXXdmS4CsqBWNaPsROTIegxlIWFw/6G7+cxUWRzMD4WwKx77rM=
+  on:
+    repo: yuruga/hubot
+    branch: master
