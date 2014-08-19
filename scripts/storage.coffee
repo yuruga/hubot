@@ -14,7 +14,7 @@ module.exports = (robot) ->
     msg.send output
 
   robot.respond /show msg$/i, (msg) ->
-    output = Util.inspect(msg, false, 4)
+    output = Util.inspect(msg.message, false, 4)
     msg.send output
 
   robot.respond /show users$/i, (msg) ->
