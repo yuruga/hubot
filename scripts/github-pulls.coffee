@@ -1,5 +1,5 @@
 # Description:
-#   Show open pull requests from a Github repository or organization
+#   create pull requests from a Github repository
 #
 # Dependencies:
 #   "githubot": "0.4.x"
@@ -11,81 +11,91 @@
 #   HUBOT_GITHUB_ORG
 #
 # Commands:
-#   hubot show [me] <user/repo> pulls [with <regular expression>] -- Shows open pull requests for that project by filtering pull request's title.
-#   hubot show [me] <repo> pulls -- Show open pulls for HUBOT_GITHUB_USER/<repo>, if HUBOT_GITHUB_USER is configured
-#   hubot show [me] org-pulls [for <organization>] -- Show open pulls for all repositories of an organization, default is HUBOT_GITHUB_ORG
+#   hubot create pr <user/repo> <to_branch> <from_branch>
+#   hubot create pr <user/repo> #<issue_number>
+#   hubot create pr #<issue_number>
+#   hubot deploy pr <user/repo>
+#   hubot deploy pr
 #
 # Notes:
-#   HUBOT_GITHUB_API allows you to set a custom URL path (for Github enterprise users)
-#
-#   You can further filter pull request title by providing a regular expression.
-#   For example, `show me hubot pulls with awesome fix`.
 #
 # Author:
-#   jingweno
+#   xlune
+
 
 module.exports = (robot) ->
 
-  github = require("githubot")(robot)
+    github = require("githubot")(robot)
 
-  unless (url_api_base = process.env.HUBOT_GITHUB_API)?
-    url_api_base = "https://api.github.com"
+    unless (url_api_base = process.env.HUBOT_GITHUB_API)?
+      url_api_base = "https://api.github.com"
 
-  robot.respond /show\s+(me\s+)?(.*)\s+pulls(\s+with\s+)?(.*)?/i, (msg)->
-    repo = github.qualified_repo msg.match[2]
-    filter_reg_exp = new RegExp(msg.match[4], "i") if msg.match[3]
+    requestSend = (msg, repo, data) ->
+        github.handleErrors (response) ->
+            msg.send "Failed... #{response.error}"
+        github.post "#{url_api_base}/repos/#{repo}/pulls", data, (pulls) ->
+            msg.send "Created pull request ##{pulls['number']}. \nlink: #{pulls['html_url']}"
+            return
+        return
 
-    github.get "#{url_api_base}/repos/#{repo}/pulls", (pulls) ->
-      if pulls.length == 0
-        summary = "Achievement unlocked: open pull requests zero!"
-      else
-        filtered_result = []
-        for pull in pulls
-          if filter_reg_exp && pull.title.search(filter_reg_exp) < 0
-            continue
-          filtered_result.push(pull)
+    makeData = (bt, bf) ->
+        return {
+            "title": "#{bf} to #{bt}",
+            "body": "Please pull this in!",
+            "head": bf,
+            "base": bt
+        }
 
-        if filtered_result.length == 0
-          summary = "There's no open pull request for #{repo} matching your filter!"
-        else if filtered_result.length == 1
-          summary = "There's only one open pull request for #{repo}:"
+    makeDataByIssue = (bt, bf, issue) ->
+        return {
+            "issue": issue,
+            "head": bf,
+            "base": bt
+        }
+
+    getGithubRepo = (msg) =>
+        user_id = msg.message.user.id
+        room = msg.message.room
+        key = "repo"
+        if robot.brain.data.github?[user_id]?[room]?[key]
+            return robot.brain.data.github[user_id][room][key]
+        return
+
+    robot.respond /create\s+pr\s+(.+)\s+(.+)\s+(.+)/i, (msg)->
+        repo = github.qualified_repo msg.match[1]
+        branch_to = msg.match[2]
+        branch_from = msg.match[3]
+        requestSend(msg, repo, makeData(branch_to, branch_from))
+        return
+
+    robot.respond /create\s+pr\s+(.+)\s+#([0-9]+)/i, (msg)->
+        repo = github.qualified_repo msg.match[1]
+        branch_to = "develop"
+        branch_from = "feature/##{msg.match[2]}"
+        issue = msg.match[2]
+        requestSend(msg, repo, makeDataByIssue(branch_to, branch_from, issue))
+        return
+
+    robot.respond /create\s+pr\s+#([0-9]+)/i, (msg)->
+        repo = getGithubRepo msg
+        if repo
+            branch_to = "develop"
+            branch_from = "feature/##{msg.match[1]}"
+            issue = msg.match[1]
+            requestSend(msg, repo, makeDataByIssue(branch_to, branch_from, issue))
         else
-          summary = "I found #{filtered_result.length} open pull requests for #{repo}:"
+            msg.send "Github repo not set."
+        return
 
-        for pull in filtered_result
-          summary = summary + "\n\t#{pull.title} - #{pull.user.login}: #{pull.html_url}"
+    robot.respond /deploy\s+pr(?:\s+([^\s]+))/i, (msg)->
+        repo = getGithubRepo msg
+        if msg.match[1]
+            repo = github.qualified_repo msg.match[1]
 
-      msg.send summary
-
-  robot.respond /show\s+(me\s+)?org\-pulls(\s+for\s+)?(.*)?/i, (msg) ->
-
-    org_name = msg.match[3] || process.env.HUBOT_GITHUB_ORG
-
-    unless (org_name)
-      msg.send "No organization specified, please provide one or set HUBOT_GITHUB_ORG accordingly."
-      return
-
-    url = "#{url_api_base}/orgs/#{org_name}/issues?filter=all"
-    github.get url, (issues) ->
-      if issues.length == 0
-        summary = "Achievement unlocked: open pull requests zero!"
-      else
-        filtered_result = []
-        for issue in issues
-          if issue.pull_request.html_url == null
-            continue
-          filtered_result.push(issue)
-
-        if filtered_result.length == 0
-          summary = "Achievement unlocked: open pull requests zero!"
-        else if filtered_result.length == 1
-          summary = "There's only one open pull request for #{org_name}:"
+        if repo
+            branch_to = "master"
+            branch_from = "develop"
+            requestSend(msg, repo, makeData(branch_to, branch_from))
         else
-          summary = "I found #{filtered_result.length} open pull requests for #{org_name}:"
-
-        for issue in filtered_result
-          summary = summary + "\n\t#{issue.repository.name}: #{issue.title} (#{issue.user.login}) -> #{issue.pull_request.html_url}"
-
-      msg.send summary
-
-
+            msg.send "Github repo not set."
+        return

@@ -11,18 +11,18 @@
 #   HUBOT_GITHUB_ORG
 #
 # Commands:
-#   hubot create issue <title> <user/repo>? <github_user>? <milestone_num>? --
-#   hubot set github user <user> -- デフォルトで利用するGithubのユーザ名をセット
-#   hubot set github repo <repo> -- デフォルトで利用するGithubのリポジトリをセット
-#   hubot set github milestone <milestone_num> -- デフォルトで利用するGithubのマイルストーンをセット
-#   hubot show github user -- デフォルトで利用するGithubのユーザ名を表示
-#   hubot show github repo -- デフォルトで利用するGithubのリポジトリを表示
-#   hubot show github milestone --　デフォルトで利用するGithubのマイルストーンを表示
+#   hubot create issue <title> <repo>? <user>? <milestone>?
+#   hubot show issues <repo>?
+#   hubot set github <key> <value>
+#   hubot set github <user> <repo> <milestone>
+#   hubot show github <key>?
 #
 # Notes:
 #
 # Author:
 #   xlune
+
+Util = require "util"
 
 GITHUB_VAR_KEYS = [
     "user"
@@ -60,26 +60,18 @@ module.exports = (robot) ->
             return
         return
 
-    #
-    # makeData = (bt, bf) ->
-    #     return {
-    #         "title": "#{bf} to #{bt}",
-    #         "body": "Please pull this in!",
-    #         "head": bf,
-    #         "base": bt
-    #     }
-    #
-    # makeDataByIssue = (bt, bf, issue) ->
-    #     return {
-    #         "issue": issue,
-    #         "head": bf,
-    #         "base": bt
-    #     }
+    setGithubVar = (key, val, user_id, room) ->
+        robot.brain.data.github = {} unless robot.brain.data.github?
+        vars = robot.brain.data.github[user_id] or {}
+        vars[room] = vars[room] or {}
+        vars[room][key] = val
+        robot.brain.data.github[user_id] = vars
+        robot.brain.save()
+        return
 
-    getGithubVer = (key, user_id) =>
-        g = robot.brain.data.github or {}
-        if g[user_id]?[key]?
-            return g[user_id][key]
+    getGithubVer = (key, user_id, room) ->
+        if robot.brain.data.github?[user_id]?[room]?[key]
+            return robot.brain.data.github[user_id][room][key]
         return
 
     robot.respond /set\s+github\s+(.+)\s+(.+)/i, (msg)->
@@ -91,42 +83,64 @@ module.exports = (robot) ->
                 msg.send "Failed. Bad value."
                 return
             user_id = msg.message.user.id
+            room = msg.message.room
             if user_id of robot.brain.data.users
-                robot.brain.data.github = {} unless robot.brain.data.github?
-                vars = robot.brain.data.github[user_id] or {}
-                vars[key] = val
-                robot.brain.data.github[user_id] = vars
-                robot.brain.save()
-                msg.send "Set github value. #{key} is #{val}"
+                setGithubVar(key, val, user_id, room)
+                msg.send "Set github value. #{key} is #{val} by #{room}"
             else
                 msg.send "Failed. User Undefined."
         else
             msg.send "Failed. Bad key name."
         return
 
-    robot.respond /show\s+github\s+(.+)/i, (msg)->
+    robot.respond /set\s+github\s+(.+)\s+(.+)\s+(.+)/i, (msg)->
+        data = {
+            user: msg.match[1]
+            repo: msg.match[2]
+            milestone: msg.match[3]
+        }
+        user_id = msg.message.user.id
+        room = msg.message.room
+        data = {}
+        for val,key in data
+            setGithubVar(key, val, user_id, room)
+            data[key] = val
+        msg.send "github values.\n#{Util.inspect(data, false, 4)}\nby #{room}"
+        return
+
+    robot.respond /show\s+github(?:\s+([^\s]+))?/i, (msg)->
         key = msg.match[1]
+        user_id = msg.message.user.id
+        room = msg.message.room
         if key in GITHUB_VAR_KEYS
-            user_id = msg.message.user.id
             if user_id of robot.brain.data.users
-                val = getGithubVer(key, user_id)
+                val = getGithubVer(key, user_id, room)
                 if val
-                    msg.send "github value. #{key} is #{val}"
+                    msg.send "github value. #{key} is #{val} by #{room}"
                 else
                     msg.send "github value. #{key} is Unset..."
             else
                 msg.send "Failed. User Undefined."
-        else
+        else if key
             msg.send "Failed. Bad key name."
+        else
+            if user_id of robot.brain.data.users
+                data = {}
+                for key in GITHUB_VAR_KEYS
+                    data[key] = getGithubVer(key, user_id, room)
+                msg.send "github values.\n#{Util.inspect(data, false, 4)}\nby #{room}"
+            else
+                msg.send "Failed. User Undefined."
         return
 
     robot.respond /create\s+issue\s+([^\s]+)(?:\s+([^\s]+))?(?:\s+([^\s]+))?(?:\s+([0-9]+))?/i, (msg)->
         user_id = msg.message.user.id
+        room = msg.message.room
         title = msg.match[1]
-        repo = msg.match[2] or getGithubVer("repo", user_id)
+        repo = msg.match[2] or getGithubVer("repo", user_id, room)
         repo = github.qualified_repo repo if repo
-        username = msg.match[3] or getGithubVer("user", user_id)
-        milestone = msg.match[4] or getGithubVer("milestone", user_id)
+        username = msg.match[3] or getGithubVer("user", user_id, room)
+        milestone = msg.match[4] or getGithubVer("milestone", user_id, room)
         if title and repo
             data = {}
             data.title = title
@@ -139,35 +153,14 @@ module.exports = (robot) ->
 
     robot.respond /show\s+issues(?:\s+([^\s]+))?/i, (msg) ->
         user_id = msg.message.user.id
-        repo = msg.match[1] or getGithubVer("repo", user_id)
+        room = msg.message.room
+        repo = msg.match[1] or getGithubVer("repo", user_id, room)
         if repo
             param = { state: "open", sort: "created" }
-            user_name = getGithubVer("user", user_id)
+            user_name = getGithubVer("user", user_id, room)
             param.assignee = user_name if user_name?
 
             requestShow(msg, repo, param)
         else
             msg.send "require repository target."
         return
-
-    # robot.respond /create\s+pr\s+(.+)\s+(.+)\s+(.+)/i, (msg)->
-    #     repo = github.qualified_repo msg.match[1]
-    #     branch_to = msg.match[2]
-    #     branch_from = msg.match[3]
-    #     requestSend(msg, repo, makeData(branch_to, branch_from))
-    #     return
-    #
-    # robot.respond /create\s+pr\s+(.+)\s+#([0-9]+)/i, (msg)->
-    #     repo = github.qualified_repo msg.match[1]
-    #     branch_to = "develop"
-    #     branch_from = "feature/##{msg.match[2]}"
-    #     issue = msg.match[2]
-    #     requestSend(msg, repo, makeDataByIssue(branch_to, branch_from, issue))
-    #     return
-    #
-    # robot.respond /deploy\s+pr\s+(.+)/i, (msg)->
-    #     repo = github.qualified_repo msg.match[1]
-    #     branch_to = "master"
-    #     branch_from = "develop"
-    #     requestSend(msg, repo, makeData(branch_to, branch_from))
-    #     return
