@@ -6,12 +6,21 @@ notifications:
   slack:
     secure: bvnjVwfzROgIswpvM3mzPfTnBj4ey/Bw/jVcYuJvuCIzqfl0dHnqrtsYgZSa2rxT8kudwXdrSMDA1S8NeDP1gDbfOMQObWpoo7lF2KGj5cINGCN72hEeHkjz3P+dRDa0UsAsAr23q+CD1c2LdS4XjYuJPFvol2wzLG6SCWX6Q4U=
 deploy:
-  provider: heroku
-  strategy: git
-  api_key:
-    secure: rnXTlR+OWw5ytwBpsZ5+gCZfw8kPSD4hGJVA2aqv/tRRVZ3h8BJmUg70kfmUFs7HalxliBGiTWxxIgfIu5kfs0/BcP9rx8dEItolwuLhYPiPS0YfwrCmA1txTDpRl8CgTx36vlaI8kuWi2JicrZkeO8tle0kNuBDOxFnoDZ4ZqY=
-  app:
-    secure: piQBrDA6hdjdpK27NzWiKWvmlFC8zzeec0fGJwvvre3m8pyc/zSXEMIWwQr35LW2znVVO2InlfbbHCJ3B1ld19RnkRAqZzIaRCiqVg834zD3GYY5YdlXImd8SoXXdmS4CsqBWNaPsROTIegxlIWFw/6G7+cxUWRzMD4WwKx77rM=
-  on:
-    repo: yuruga/hubot
-    branch: master
+  - provider: heroku
+    strategy: git
+    api_key:
+      secure: rnXTlR+OWw5ytwBpsZ5+gCZfw8kPSD4hGJVA2aqv/tRRVZ3h8BJmUg70kfmUFs7HalxliBGiTWxxIgfIu5kfs0/BcP9rx8dEItolwuLhYPiPS0YfwrCmA1txTDpRl8CgTx36vlaI8kuWi2JicrZkeO8tle0kNuBDOxFnoDZ4ZqY=
+    app:
+      secure: piQBrDA6hdjdpK27NzWiKWvmlFC8zzeec0fGJwvvre3m8pyc/zSXEMIWwQr35LW2znVVO2InlfbbHCJ3B1ld19RnkRAqZzIaRCiqVg834zD3GYY5YdlXImd8SoXXdmS4CsqBWNaPsROTIegxlIWFw/6G7+cxUWRzMD4WwKx77rM=
+    on:
+      repo: yuruga/hubot
+      branch: master
+  - provider: heroku
+    strategy: git
+    api_key:
+      secure: "suaCIcUZ/LIBdZOri9tS9zinVpxVIIfuBcM2JRpzk6emlqNRcKuwV94/dS0OUhEVjEsxnq0ftpsuLkVP4URg0T6hdjrX1uOT9OGG9M7vO/ljVyvlvHPRo2WQ0WJpf7/GRcTLy3wmpD/gIo7yj+Uf6NfmsCP1wbMKApCviSTpBaY="
+    app:
+      secure: "W03k7g4wm8hVD24wvVKt7f3R7WVgboTEXEQuw+qMPFiazRBfqTZZLOhr5DUdHoUcMSWnAazjU7Gsq8+ncWYatQlFJT54KM05RLomxsogDsWsLB+iTgZW5NkEqDUicIDs7oshaiZyMYANBZfDj3/ZwIZZcIKBkcRyV8+gZggxMwM="
+    on:
+      repo: yuruga/hubot
+      branch: master
