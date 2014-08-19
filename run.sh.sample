@@ -6,6 +6,11 @@ export HUBOT_HIPCHAT_JID=""
 export HUBOT_HIPCHAT_PASSWORD=""
 #export HUBOT_LOG_LEVEL="debug"
 
+#slack
+export HUBOT_SLACK_TOKEN=""
+export HUBOT_SLACK_TEAM=""
+export HUBOT_SLACK_BOTNAME=""
+
 #github setting
 export HUBOT_GITHUB_TOKEN=""
 export HUBOT_GITHUB_USER=""
@@ -13,5 +18,7 @@ export HUBOT_GITHUB_USER=""
 export HUBOT_GITHUB_ORG=""
 
 #hubot start
-forever start -c coffee node_modules/.bin/hubot -a hipchat
-
+#bin/hubot -a hipchat
+#bin/hubot -a slack
+#forever start -c coffee node_modules/.bin/hubot -a hipchat
+forever start -c coffee node_modules/.bin/hubot -a slack
