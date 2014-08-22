@@ -13,6 +13,7 @@
 # Commands:
 #   hubot create issue <title> <repo>? <user>? <milestone>?
 #   hubot show issues <repo>?
+#   hubot show milestones <repo>?
 #   hubot set github <key> <value>
 #   hubot set github <user> <repo> <milestone>
 #   hubot show github <key>?
@@ -66,13 +67,27 @@ module.exports = (robot) ->
         github.get "#{url_api_base}/repos/#{repo}/milestones", param, (milestones) ->
             message = []
             for milestone in milestones
-                message.push "##{milestone.number} #{milestone.title}"
+                message.push "[#{milestone.number}] #{milestone.title}"
 
             if message.length
                 msg.send message.join("\n")
             else
                 msg.send "Not have milestone."
             return
+        return
+
+    numberOfMilestone = (val, repo, callback) ->
+        if val.match(/^[0-9]+$/)
+            callback val
+            return
+        github.handleErrors (response) ->
+            msg.send "Failed... #{response.error}"
+        github.get "#{url_api_base}/repos/#{repo}/milestones", {state:"all"}, (milestones) ->
+            for milestone in milestones
+                if milestone.title is val
+                    callback milestone.number.toString()
+                    return
+            callback ""
         return
 
     setGithubVar = (key, val, user_id, room) ->
@@ -109,9 +124,6 @@ module.exports = (robot) ->
         val = msg.match[2]
         if key in GITHUB_VAR_KEYS
             val = github.qualified_repo val if key is "repo"
-            if key is "milestone" and not val.match /^[0-9]+$/
-                msg.send "Failed. Bad value."
-                return
             user_id = msg.message.user.id
             room = msg.message.room
             if user_id of robot.brain.data.users
@@ -156,14 +168,16 @@ module.exports = (robot) ->
         repo = github.qualified_repo repo if repo
         username = msg.match[3] or getGithubVer("user", user_id, room)
         milestone = msg.match[4] or getGithubVer("milestone", user_id, room)
-        if title and repo
-            data = {}
-            data.title = title
-            data.assignee = username if username
-            data.milestone = milestone if milestone
-            requestSend msg, repo, data
-        else
-            msg.send "create issue failed. "
+        numberOfMilestone milestone, repo, (milestone) =>
+            if title and repo
+                data = {}
+                data.title = title
+                data.assignee = username if username
+                data.milestone = milestone if milestone
+                requestSend msg, repo, data
+            else
+                msg.send "create issue failed. "
+            return
         return
 
     robot.respond /show\s+issues(?:\s+([^\s]+))?/i, (msg) ->
@@ -186,8 +200,6 @@ module.exports = (robot) ->
         repo = msg.match[1] or getGithubVer("repo", user_id, room)
         if repo
             param = { state: "open", sort: "created" }
-            user_name = getGithubVer("user", user_id, room)
-            param.assignee = user_name if user_name?
 
             requestShowMilestone(msg, repo, param)
         else
