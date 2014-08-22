@@ -60,6 +60,21 @@ module.exports = (robot) ->
             return
         return
 
+    requestShowMilestone = (msg, repo, param) ->
+        github.handleErrors (response) ->
+            msg.send "Failed... #{response.error}"
+        github.get "#{url_api_base}/repos/#{repo}/milestones", param, (milestones) ->
+            message = []
+            for milestone in milestones
+                message.push "##{milestone.number} #{milestone.title}"
+
+            if message.length
+                msg.send message.join("\n")
+            else
+                msg.send "Not have milestone."
+            return
+        return
+
     setGithubVar = (key, val, user_id, room) ->
         robot.brain.data.github = {} unless robot.brain.data.github?
         vars = robot.brain.data.github[user_id] or {}
@@ -161,6 +176,20 @@ module.exports = (robot) ->
             param.assignee = user_name if user_name?
 
             requestShow(msg, repo, param)
+        else
+            msg.send "require repository target."
+        return
+
+    robot.respond /show\s+milestones(?:\s+([^\s]+))?/i, (msg) ->
+        user_id = msg.message.user.id
+        room = msg.message.room
+        repo = msg.match[1] or getGithubVer("repo", user_id, room)
+        if repo
+            param = { state: "open", sort: "created" }
+            user_name = getGithubVer("user", user_id, room)
+            param.assignee = user_name if user_name?
+
+            requestShowMilestone(msg, repo, param)
         else
             msg.send "require repository target."
         return
