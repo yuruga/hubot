@@ -11,7 +11,7 @@
 #   HUBOT_GITHUB_ORG
 #
 # Commands:
-#   hubot create issue <title> <repo>? <user>? <milestone>?
+#   hubot create issue <title> <user>? <repo>? <milestone>?
 #   hubot show issues <repo>?
 #   hubot show milestones <repo>?
 #   hubot set github <key> <value>
@@ -164,9 +164,9 @@ module.exports = (robot) ->
         user_id = msg.message.user.id
         room = msg.message.room
         title = msg.match[1]
-        repo = msg.match[2] or getGithubVer("repo", user_id, room)
+        username = msg.match[2] or getGithubVer("user", user_id, room)
+        repo = msg.match[3] or getGithubVer("repo", user_id, room)
         repo = github.qualified_repo repo if repo
-        username = msg.match[3] or getGithubVer("user", user_id, room)
         milestone = msg.match[4] or getGithubVer("milestone", user_id, room)
         numberOfMilestone milestone, repo, (milestone) =>
             if title and repo
