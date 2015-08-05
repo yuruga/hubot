@@ -24,3 +24,12 @@ deploy:
     on:
       repo: yuruga/hubot
       branch: master
+  - provider: heroku
+    strategy: git
+    api_key:
+      secure: "jO6nBlWFPu3lMVDPXgb1QG1OBF1Q2qoQp2FOgCCyk7vMuKaovDrQ2RsDW+ysQQ/Fjnl61CQOGzvYV3x/Am4BciBbFFWmJh+78Iobb013AWCmIGe31osUYk880y7yocSETLE/K5nqhyXrZiM5X3W7IbuXJy/WwZxiGDEBZGOpfSA="
+    app:
+      secure: "LI1GK3BMvVY5pFcLGAzPBfhv2xbB8L1U98iV+YpXAYHjXbAKpRswQa/77/WIWPe/rFLk75u8ePWRvQgiN9mB6KRFRzUPxd9PhfrZtyEHuZi2ApuXBiIB7Jgm0lhq3kB6Nu6U6tPiKwvjEw1msgCEhHpVNt2ee+K+Cw7D8Fxucto="
+    on:
+      repo: yuruga/hubot
+      branch: master
