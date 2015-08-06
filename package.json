@@ -24,10 +24,10 @@
     "hubot": ">= 2.6.0 < 3.0.0",
     "hubot-scripts": ">= 2.5.0 < 3.0.0",
     "hubot-hipchat": "~2.5.1-5",
-    "githubot": "~1.0.0-beta2",
+    "githubot": "~1.0.0",
     "underscore": "~1.6.0",
     "underscore.string": "~2.3.3",
-    "hubot-slack": "~2.1.1"
+    "hubot-slack": "~3.3.0"
   },
   "engines": {
     "node": ">= 0.8.x",
