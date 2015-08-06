@@ -23,7 +23,7 @@
   "dependencies": {
     "hubot": ">= 2.6.0 < 3.0.0",
     "hubot-scripts": ">= 2.5.0 < 3.0.0",
-    "hubot-hipchat": "~2.5.1-5",
+    "hubot-hipchat": "~2.7.5",
     "githubot": "~1.0.0-beta2",
     "underscore": "~1.6.0",
     "underscore.string": "~2.3.3",
